@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <Controller.h>
 
-Controller controller("RobotAP", "James000") ;
+Controller controller("LeBrain-James", "James000") ;
 
 void setup () {
   Serial.begin(115200) ;
