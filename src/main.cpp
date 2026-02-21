@@ -4,8 +4,8 @@
 Controller controller("LeBrain-James", "James000");
 
 //Thrower ie motor 3
-constexpr uint8_t M3_EN  = 11;
-constexpr uint8_t M3_IN1 = 12;
+constexpr uint8_t M3_EN  = 3;
+constexpr uint8_t M3_IN1 = 2;
 constexpr uint8_t M3_IN2 = 8;
 constexpr uint8_t M3_MIN_PWM = 90;
 
@@ -58,10 +58,27 @@ void setMotorThree(int8_t spd) {
     Serial.print(" pwd=");
     Serial.print(pwm);
     
+    analogWrite(M3_EN, pwm);    
+}
 
-    analogWrite(M3_EN, pwm);
 
-    
+void motorThreeReload(){
+
+  //for some time
+  digitalWrite(M3_IN1, LOW);
+  digitalWrite(M3_IN2, HIGH);
+
+  //break till ready to shoot
+  digitalWrite(M3_IN1, HIGH);
+  digitalWrite(M3_IN2, HIGH);
+
+
+}
+
+void motorthreeShoot(){
+  //realease motor
+  digitalWrite(M3_IN1, LOW);
+  digitalWrite(M3_IN2, LOW);
 }
 
 //Togle M3
@@ -80,6 +97,10 @@ void setup () {
   controller.setMotorMinPWM(90);
   controller.setFailsafeTimeoutMs (1200);
   controller.enableStatusLED(LED_BUILTIN);
+
+  pinMode(2, OUTPUT);
+  pinMode(8, OUTPUT);
+  pinMode(3, OUTPUT);
 
   //controller.registerDriveCallback(onDrive);
   controller.registerButton("M3", toggleM3);  // appears on the web UI
