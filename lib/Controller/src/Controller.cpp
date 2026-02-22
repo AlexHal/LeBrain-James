@@ -3,6 +3,8 @@
 //
 
 #include "Controller.h"
+#include "kobe.h"
+// kobe.h provides: const char* kobeBase64
 
 Controller::Controller(const char* ssid, const char* password)
     : _ssid(ssid), _password(password) {}
@@ -323,8 +325,38 @@ void Controller::handleClient(WiFiClient& client) {
         return;
     }
 
+    if (requestLine.startsWith("GET /slider?")) {
+        handleSlider(client, requestLine);
+        return;
+    }
+
+    if (requestLine.startsWith("GET /kobe")) {
+        handleKobePage(client);
+        return;
+    }
+
+    if (requestLine.startsWith("GET /sound")) {
+        handleSound(client);
+        return;
+    }
+
     sendHttpNotFound(client);
 }
+
+void Controller::triggerSound() {
+    _soundPending = true;
+}
+
+void Controller::handleSound(WiFiClient& client) {
+    if (_soundPending) {
+        _soundPending = false;
+        sendHttpOk(client, "text/plain; charset=utf-8", "1");
+    } else {
+        sendHttpOk(client, "text/plain; charset=utf-8", "0");
+    }
+}
+
+
 
 void Controller::handleHealth(WiFiClient& client) {
     sendHttpOk(client, "text/plain; charset=utf-8", "OK");
@@ -488,13 +520,50 @@ void Controller::handleRoot(WiFiClient& client) {
         buttonsHtml = "<div style='opacity:.7'>No buttons registered</div>";
     }
 
+    // Sliders HTML
+    String slidersHtml;
+    for (uint8_t i = 0; i < _sliderCount; i++) {
+        String sid = String(i);
+        slidersHtml += "<div class='slRow'>";
+        slidersHtml += "<div class='slHeader'>";
+        slidersHtml += "<span class='slLabel'>";
+        slidersHtml += _sliders[i].label;
+        slidersHtml += "</span>";
+        slidersHtml += "<span class='slVal' id='sv";
+        slidersHtml += sid;
+        slidersHtml += "'>";
+        slidersHtml += _sliders[i].defaultVal;
+        slidersHtml += "</span></div>";
+        slidersHtml += "<input class='sl' type='range' id='sl";
+        slidersHtml += sid;
+        slidersHtml += "' min='";
+        slidersHtml += _sliders[i].minVal;
+        slidersHtml += "' max='";
+        slidersHtml += _sliders[i].maxVal;
+        slidersHtml += "' value='";
+        slidersHtml += _sliders[i].defaultVal;
+        slidersHtml += "' data-id='";
+        slidersHtml += sid;
+        slidersHtml += "'/></div>";
+    }
+
+
+
     String page;
     page.reserve(7500);
+    
 
     page += "<!doctype html><html><head><meta charset='utf-8'/>";
     page += "<meta name='viewport' content='width=device-width,initial-scale=1'/>";
     page += "<title>Robot Controller</title>";
     page += "<style>";
+    page += ".slRow{margin:14px 0;}";
+page += ".slHeader{display:flex;justify-content:space-between;margin-bottom:6px;}";
+page += ".slLabel{font-size:16px;font-weight:600;}";
+page += ".slVal{font-size:16px;font-variant-numeric:tabular-nums;}";
+page += ".sl{width:100%;height:42px;-webkit-appearance:none;appearance:none;background:transparent;touch-action:none;}";
+page += ".sl::-webkit-slider-runnable-track{height:12px;border-radius:999px;background:#ddd;border:1px solid #333;}";
+page += ".sl::-webkit-slider-thumb{-webkit-appearance:none;width:34px;height:34px;border-radius:50%;background:#333;border:2px solid #fff;margin-top:-12px;}";
   page += "#thrRow{margin-top:10px;}";
   page += ".thrHeader{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}";
   page += ".thrLabel{font-size:16px;font-weight:600;}";
@@ -532,6 +601,11 @@ void Controller::handleRoot(WiFiClient& client) {
     page += buttonsHtml;
     page += "</div>";
 
+    // Add to page (after buttons row)
+    page += "<div class='row' id='sliders'>";
+    page += slidersHtml;
+    page += "</div>";
+
     page += "<div class='row'><div id='joy'><div id='stick'></div></div></div>";
 
 page += "<div class='row' id='thrRow'>";
@@ -542,8 +616,22 @@ page += "  </div>";
 page += "  <input id='thr' class='thr' type='range' min='0' max='100' value='100' step='1'/>";
 page += "</div>";
 
+page += "<div class='row'><div id='status'></div></div>";
+
     // --- JS (STOP priority even if a request is in-flight) + HEARTBEAT resend ---
     page += "<script>";
+    page += "document.querySelectorAll('.sl').forEach(sl=>{";
+    page += "  let db;";
+    page += "  sl.addEventListener('input',()=>{";
+    page += "    const id=sl.getAttribute('data-id');";
+    page += "    const v=sl.value;";
+    page += "    document.getElementById('sv'+id).textContent=v;";
+    page += "    clearTimeout(db);";
+    page += "    db=setTimeout(()=>{";
+    page += "      fetch(`/slider?id=${id}&v=${v}&_=${Date.now()}`,{cache:'no-store'}).catch(()=>{});";
+    page += "    },80);";  // 80ms debounce — avoids flooding on fast drags
+    page += "  });";
+    page += "});";
     page += "let x=0,y=0,t=100;";
     page += "const joy=document.getElementById('joy');";
     page += "const stick=document.getElementById('stick');";
@@ -652,13 +740,42 @@ page += "</div>";
     page += "  sendDriveNow(true);";
     page += "});";
 
+    // Stream page in two parts to avoid RAM overflow from kobeBase64
     page += "updateStatus('ready');";
     page += "sendDriveNow(true);";
-    page += "</script>";
+    page += "const snd=new Audio('data:audio/mpeg;base64,";
 
-    page += "</div></body></html>";
+    // Send headers + page body first (no Content-Length since we stream)
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: text/html; charset=utf-8");
+    client.println("Connection: close");
+    client.println();
+    client.print(page);
 
-    sendHttpOk(client, "text/html; charset=utf-8", page);
+    // Stream kobeBase64 directly from flash — never touches RAM as a String
+    client.print(kobeBase64);
+    client.print("');");
+    client.print("snd.load();");
+    client.print("document.addEventListener('click',()=>{snd.play().then(()=>snd.pause()).catch(()=>{});},{once:true});");
+    client.print("setInterval(async()=>{");
+    client.print("try{const r=await fetch('/sound?_='+Date.now(),{cache:'no-store'});");
+    client.print("const t=await r.text();");
+    client.print("if(t.trim()==='1'){snd.currentTime=0;snd.play();}}catch(e){}");
+    client.print("},300);");
+    client.print("</script></div></body></html>");
+}
+
+// ── /kobe — standalone sound page ────────────────────────────────────────────
+void Controller::handleKobePage(WiFiClient& client) {
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: text/html; charset=utf-8");
+    client.println("Connection: close");
+    client.println();
+    client.print("<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'/><title>Kobe!</title></head><body style='background:#000;display:flex;align-items:center;justify-content:center;height:100vh;margin:0'>");
+    client.print("<button onclick=\"snd.currentTime=0;snd.play()\" style=\'font-size:80px;background:none;border:none;cursor:pointer\'>&#127936;</button>");
+    client.print("<script>const snd=new Audio('data:audio/mpeg;base64,");
+    client.print(kobeBase64);
+    client.print("');snd.load();</script></body></html>");
 }
 
 // -------------------- L298N implementation --------------------
@@ -744,4 +861,33 @@ void Controller::motorApply(int8_t left, int8_t right) {
     debugMotors(left, right);
     setMotorOne(_ena, _in1, _in2, left);
     setMotorOne(_enb, _in3, _in4, right);
+}
+
+
+// ── registerSlider / clearSliders ─────────────────────────────────────────────
+bool Controller::registerSlider(const char* label, int minVal, int maxVal,
+                                 int defaultVal, void (*cb)(int)) {
+    if (_sliderCount >= MAX_SLIDERS) return false;
+    _sliders[_sliderCount] = { label, minVal, maxVal, defaultVal, cb };
+    _sliderCount++;
+    return true;
+}
+
+void Controller::clearSliders() { _sliderCount = 0; }
+
+// ── /slider?id=X&v=Y handler ──────────────────────────────────────────────────
+void Controller::handleSlider(WiFiClient& client, const String& requestLine) {
+    int id = -1, val = 0;
+    if (!extractQueryInt(requestLine, "id", id)) {
+        sendHttpOk(client, "text/plain; charset=utf-8", "Missing id"); return;
+    }
+    if (id < 0 || id >= (int)_sliderCount) {
+        sendHttpOk(client, "text/plain; charset=utf-8", "Bad id"); return;
+    }
+    extractQueryInt(requestLine, "v", val);
+    val = constrain(val, _sliders[id].minVal, _sliders[id].maxVal);
+
+    if (_sliders[id].cb) _sliders[id].cb(val);
+
+    sendHttpOk(client, "text/plain; charset=utf-8", "OK");
 }
