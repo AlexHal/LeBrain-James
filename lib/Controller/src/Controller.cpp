@@ -3,6 +3,8 @@
 //
 
 #include "Controller.h"
+#include "kobe.h"
+// kobe.h provides: const char* kobeBase64
 
 Controller::Controller(const char* ssid, const char* password)
     : _ssid(ssid), _password(password) {}
@@ -328,8 +330,33 @@ void Controller::handleClient(WiFiClient& client) {
         return;
     }
 
+    if (requestLine.startsWith("GET /kobe")) {
+        handleKobePage(client);
+        return;
+    }
+
+    if (requestLine.startsWith("GET /sound")) {
+        handleSound(client);
+        return;
+    }
+
     sendHttpNotFound(client);
 }
+
+void Controller::triggerSound() {
+    _soundPending = true;
+}
+
+void Controller::handleSound(WiFiClient& client) {
+    if (_soundPending) {
+        _soundPending = false;
+        sendHttpOk(client, "text/plain; charset=utf-8", "1");
+    } else {
+        sendHttpOk(client, "text/plain; charset=utf-8", "0");
+    }
+}
+
+
 
 void Controller::handleHealth(WiFiClient& client) {
     sendHttpOk(client, "text/plain; charset=utf-8", "OK");
@@ -524,6 +551,7 @@ void Controller::handleRoot(WiFiClient& client) {
 
     String page;
     page.reserve(7500);
+    
 
     page += "<!doctype html><html><head><meta charset='utf-8'/>";
     page += "<meta name='viewport' content='width=device-width,initial-scale=1'/>";
@@ -587,6 +615,8 @@ page += "    <div class='thrValue'><span id='tval'>100</span>%</div>";
 page += "  </div>";
 page += "  <input id='thr' class='thr' type='range' min='0' max='100' value='100' step='1'/>";
 page += "</div>";
+
+page += "<div class='row'><div id='status'></div></div>";
 
     // --- JS (STOP priority even if a request is in-flight) + HEARTBEAT resend ---
     page += "<script>";
@@ -710,13 +740,42 @@ page += "</div>";
     page += "  sendDriveNow(true);";
     page += "});";
 
+    // Stream page in two parts to avoid RAM overflow from kobeBase64
     page += "updateStatus('ready');";
     page += "sendDriveNow(true);";
-    page += "</script>";
+    page += "const snd=new Audio('data:audio/mpeg;base64,";
 
-    page += "</div></body></html>";
+    // Send headers + page body first (no Content-Length since we stream)
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: text/html; charset=utf-8");
+    client.println("Connection: close");
+    client.println();
+    client.print(page);
 
-    sendHttpOk(client, "text/html; charset=utf-8", page);
+    // Stream kobeBase64 directly from flash — never touches RAM as a String
+    client.print(kobeBase64);
+    client.print("');");
+    client.print("snd.load();");
+    client.print("document.addEventListener('click',()=>{snd.play().then(()=>snd.pause()).catch(()=>{});},{once:true});");
+    client.print("setInterval(async()=>{");
+    client.print("try{const r=await fetch('/sound?_='+Date.now(),{cache:'no-store'});");
+    client.print("const t=await r.text();");
+    client.print("if(t.trim()==='1'){snd.currentTime=0;snd.play();}}catch(e){}");
+    client.print("},300);");
+    client.print("</script></div></body></html>");
+}
+
+// ── /kobe — standalone sound page ────────────────────────────────────────────
+void Controller::handleKobePage(WiFiClient& client) {
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: text/html; charset=utf-8");
+    client.println("Connection: close");
+    client.println();
+    client.print("<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'/><title>Kobe!</title></head><body style='background:#000;display:flex;align-items:center;justify-content:center;height:100vh;margin:0'>");
+    client.print("<button onclick=\"snd.currentTime=0;snd.play()\" style=\'font-size:80px;background:none;border:none;cursor:pointer\'>&#127936;</button>");
+    client.print("<script>const snd=new Audio('data:audio/mpeg;base64,");
+    client.print(kobeBase64);
+    client.print("');snd.load();</script></body></html>");
 }
 
 // -------------------- L298N implementation --------------------

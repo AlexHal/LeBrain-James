@@ -1,6 +1,9 @@
 #include <Arduino.h>
 #include <Controller.h>
 
+volatile bool playSound = false;
+
+
 Controller controller("LeBrain-James", "James000");
 
 //Thrower ie motor 3
@@ -8,10 +11,12 @@ constexpr uint8_t M3_EN  = 3;
 constexpr uint8_t M3_IN1 = 2;
 constexpr uint8_t M3_IN2 = 8;
 constexpr uint8_t M3_MIN_PWM = 90;
+constexpr uint8_t DAC_PIN = DAC; //TODO: set on board
 
-int8_t m3Speed  = 90; 
-int8_t currentDegree = 0;
-int8_t rpm = 200;
+int8_t m3Speed  = 100; 
+
+int currentDegree = 0;
+int rpm = 150; // Maybe uint8_t ?  //adjust with new bat pack
 
 void onDegree(int deg) {
     currentDegree = deg;
@@ -77,65 +82,71 @@ void setMotorThree(int8_t spd) {
  * input is from 0 to 90?
  */
 void motorThreePullback(){
-  int degree = currentDegree;
-  int pwm = map(constrain((int)m3Speed, 0, 100), 0, 100, 0, 255); // change speed maybe?
-  if (pwm > 0 && pwm < M3_MIN_PWM) pwm = M3_MIN_PWM;
-  digitalWrite(M3_IN1, LOW);
-  digitalWrite(M3_IN2, HIGH);
-  analogWrite(M3_EN, pwm);
+    int degree = currentDegree;
+    int pwm = map(constrain((int)m3Speed, 0, 100), 0, 100, 0, 255);
+    if (pwm > 0 && pwm < M3_MIN_PWM) pwm = M3_MIN_PWM;
 
-  if (degree >= 90) {
-    delay(1000); //we will need more time 
-  } else {
-    float actRPM = (float)rpm*(float)m3Speed / 100.0f;
-    float delayTime = ((float)degree / 360.0f) / (actRPM / 60.0f) * 1000.0f; 
-    // delay based on time
-    delay(delayTime);
+    float actRPM    = (float)rpm * (float)m3Speed / 100.0f;
+    float delayTime = ((float)degree / 360.0f) / (actRPM / 60.0f) * 1000.0f;
 
-    //brake till ready to shoot
+    Serial.println("[M3] --- motorThreePullback ---");
+    Serial.print("[M3] degree=");      Serial.println(degree);
+    Serial.print("[M3] m3Speed=");     Serial.println(m3Speed);
+    Serial.print("[M3] rpm=");         Serial.println(rpm);
+    Serial.print("[M3] pwm=");         Serial.println(pwm);
+    Serial.print("[M3] actRPM=");      Serial.println(actRPM);
+    Serial.print("[M3] delayTime=");   Serial.print(delayTime); Serial.println("ms");
+
+    digitalWrite(M3_IN1, HIGH);
+    digitalWrite(M3_IN2, LOW);
+    analogWrite(M3_EN, pwm);
+    Serial.println("[M3] Motor running...");
+
+    delay((unsigned long)delayTime);
+
     digitalWrite(M3_IN1, HIGH);
     digitalWrite(M3_IN2, HIGH);
-    
-  }
-
+    Serial.println("[M3] Brake applied");
 }
 
 void motorThreeRelease(){
   //realease motor
   digitalWrite(M3_IN1, LOW);
   digitalWrite(M3_IN2, LOW);
+  int pwm = map(constrain((int)m3Speed, 0, 100), 0, 100, 0, 255);
+    if (pwm > 0 && pwm < M3_MIN_PWM) pwm = M3_MIN_PWM;
+  analogWrite(M3_EN, pwm);
   currentDegree = 0;
+
+  controller.triggerSound();
 }
 
 
 void presetOne(){
-  currentDegree = 90;
+  currentDegree = 210;
   motorThreePullback();
   motorThreeRelease();
 }
 
 void presetTwo(){
-  currentDegree = 45;
-  motorThreePullback();
-  motorThreeRelease();
-}
-
-void presetThree(){
-  currentDegree = 30;
-  motorThreePullback();
-  motorThreeRelease();
-}
-
-void presetFour(){
   currentDegree = 20;
   motorThreePullback();
   motorThreeRelease();
 }
 
-void presetFive(){
-  currentDegree = 10;
-  motorThreePullback();
-  motorThreeRelease();
+
+
+extern "C" char* sbrk(int incr);
+
+int freeRam() {
+  char top;
+  return &top - reinterpret_cast<char*>(sbrk(0));
+}
+
+
+void display_freeram(){
+  Serial.print(F("- SRAM left: "));
+  Serial.println(freeRam());
 }
 
 // Roll forward configuration
@@ -449,7 +460,14 @@ void executeRoute() {
 }
 
 void setup () {
-  Serial.begin(9600) ;
+  Serial.begin(9600);
+  Serial.println("hi");
+
+
+
+
+
+  //motor
   controller.configureL298N(9, 7, 6, 10, 5, 4) ;
   controller.setMotorMinPWM(90);
   controller.setFailsafeTimeoutMs (1200);
@@ -458,11 +476,9 @@ void setup () {
   MotorThreeInit();
 
   //Shooting presents
-  controller.registerButton("Preset 1", presetOne);
-  controller.registerButton("Preset 2", presetTwo);
-  controller.registerButton("Preset 3", presetThree);
-  controller.registerButton("Preset 4", presetFour);
-  controller.registerButton("Preset 5", presetFive);
+  controller.registerButton("Shoot", presetOne);
+  controller.registerButton("Nudge", presetTwo);
+
   
   // Rotation buttons (8 buttons)
   controller.registerButton("R +90", rotateR90);
@@ -489,7 +505,7 @@ void setup () {
   controller.registerButton("ABORT", abortRoute);
 
 
-  controller.registerSlider("Pullback Degree", 0, 90, 45, onDegree);
+  controller.registerSlider("Pullback Degree", 0, 250, 90, onDegree);
   controller.registerButton("PullBack", motorThreePullback);
   controller.registerButton("Release",  motorThreeRelease);
 
@@ -501,4 +517,5 @@ void setup () {
 
 void loop() {
   controller.update ();
+  //display_freeram();
 }

@@ -12,6 +12,8 @@
                 "C:/Users/Alex/Desktop/School/2026W/Event/Forge/LeBrain-James/src",
                 "C:/Users/Alex/Desktop/School/2026W/Event/Forge/LeBrain-James/lib/Controller/src",
                 "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/libraries/WiFiS3/src",
+                "C:/Users/Alex/Desktop/School/2026W/Event/Forge/LeBrain-James/.pio/libdeps/uno_r4_wifi/LiquidCrystal_I2C",
+                "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/libraries/Wire",
                 "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/cores/arduino/tinyusb",
                 "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/cores/arduino",
                 "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/cores/arduino/api/deprecated",
@@ -37,7 +39,6 @@
                 "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/libraries/SoftwareSerial/src",
                 "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/libraries/Storage",
                 "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/libraries/WDT/src",
-                "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/libraries/Wire",
                 ""
             ],
             "browse": {
@@ -47,6 +48,8 @@
                     "C:/Users/Alex/Desktop/School/2026W/Event/Forge/LeBrain-James/src",
                     "C:/Users/Alex/Desktop/School/2026W/Event/Forge/LeBrain-James/lib/Controller/src",
                     "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/libraries/WiFiS3/src",
+                    "C:/Users/Alex/Desktop/School/2026W/Event/Forge/LeBrain-James/.pio/libdeps/uno_r4_wifi/LiquidCrystal_I2C",
+                    "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/libraries/Wire",
                     "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/cores/arduino/tinyusb",
                     "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/cores/arduino",
                     "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/cores/arduino/api/deprecated",
@@ -72,7 +75,6 @@
                     "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/libraries/SoftwareSerial/src",
                     "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/libraries/Storage",
                     "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/libraries/WDT/src",
-                    "C:/Users/Alex/.platformio/packages/framework-arduinorenesas-uno/libraries/Wire",
                     ""
                 ]
             },
