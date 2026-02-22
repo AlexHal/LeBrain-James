@@ -10,7 +10,7 @@ Controller controller("LeBrain-James", "James000");
 constexpr uint8_t M3_EN  = 3;
 constexpr uint8_t M3_IN1 = 2;
 constexpr uint8_t M3_IN2 = 8;
-constexpr uint8_t M3_MIN_PWM = 90;
+constexpr uint8_t M3_MIN_PWM = 8;
 constexpr uint8_t DAC_PIN = DAC; //TODO: set on board
 
 int8_t m3Speed  = 100; 
@@ -123,17 +123,16 @@ void motorThreeRelease(){
 
 
 void presetOne(){
-  currentDegree = 210;
+  currentDegree = 250;
   motorThreePullback();
   motorThreeRelease();
 }
 
 void presetTwo(){
-  currentDegree = 20;
+  currentDegree = 10;
   motorThreePullback();
-  motorThreeRelease();
+  //motorThreeRelease();
 }
-
 
 
 extern "C" char* sbrk(int incr);
