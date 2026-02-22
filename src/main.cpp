@@ -144,18 +144,18 @@ constexpr int8_t ROLL_SPEED_LEFT = 35;   // Left motor speed for route (reduced 
 constexpr int8_t ROLL_SPEED_RIGHT = 33;  // Right motor speed for route (reduced from 43)
 constexpr float MS_PER_METER = 3200.0f;  // Calibrated timing (increased for slower speed)
 
-// Manual roll speed (slower, more precise)
-constexpr int8_t MANUAL_SPEED_LEFT = 25;   // Left motor speed for manual (slower)
-constexpr int8_t MANUAL_SPEED_RIGHT = 23;  // Right motor speed for manual (reduced - was leaning left)
-constexpr float MANUAL_MS_PER_METER = 4200.0f;  // Slower = more time per meter
+// Manual roll speed (increased for faster testing)
+constexpr int8_t MANUAL_SPEED_LEFT = 40;   // Left motor speed for manual (increased from 25)
+constexpr int8_t MANUAL_SPEED_RIGHT = 38;  // Right motor speed for manual (increased from 23)
+constexpr float MANUAL_MS_PER_METER = 2800.0f;  // Faster = less time per meter (reduced from 4200)
 
 // Rotate configuration
 constexpr int8_t ROTATE_SPEED = 35;      // Motor speed for route rotation (reduced from 45)
 constexpr float MS_PER_DEGREE = 16.0f;   // Time per degree of rotation (increased from 12)
 
-// Manual rotate speed (slower)
-constexpr int8_t MANUAL_ROTATE_SPEED = 30;      // Motor speed for manual rotation buttons
-constexpr float MANUAL_MS_PER_DEGREE = 18.0f;   // Slower rotation timing
+// Manual rotate speed (increased for faster testing)
+constexpr int8_t MANUAL_ROTATE_SPEED = 45;      // Motor speed for manual rotation buttons (increased from 30)
+constexpr float MANUAL_MS_PER_DEGREE = 12.0f;   // Faster rotation timing (reduced from 18)
 
 // Abort flag for route
 volatile bool routeAborted = false;
