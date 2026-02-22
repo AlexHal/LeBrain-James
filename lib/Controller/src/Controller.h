@@ -59,7 +59,14 @@ public:
     bool registerSlider(const char* label, int minVal, int maxVal, int defaultVal, void (*cb)(int));
     void clearSliders();
 
+    void triggerSound();
+
 void setMotorMinPWM(uint8_t pwm);
+
+private:
+    bool _soundPending = false;
+    void handleSound(WiFiClient& client);
+    void handleKobePage(WiFiClient& client);
 
 private:
 SliderDef _sliders[MAX_SLIDERS];
@@ -181,11 +188,6 @@ private:
     int8_t _lastDbgL = 127;
     int8_t _lastDbgR = 127;
     unsigned long _lastDbgPrintMs = 0;
-
-
-
-
-
 
 
 
