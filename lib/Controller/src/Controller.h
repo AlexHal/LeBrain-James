@@ -44,9 +44,28 @@ public:
     void setMotorDebugPrintIntervalMs(uint16_t ms);
 
   void enableStatusLED(uint8_t pin = LED_BUILTIN);
+  // ── Sliders ───────────────────────────────────────────────────────────────────
+    struct SliderDef {
+        const char* label;
+        int         minVal;
+        int         maxVal;
+        int         defaultVal;
+        void        (*cb)(int value);
+    };
+
+    static constexpr uint8_t MAX_SLIDERS = 4;
+
+    // These must be PUBLIC (before the private: block)
+    bool registerSlider(const char* label, int minVal, int maxVal, int defaultVal, void (*cb)(int));
+    void clearSliders();
 
 void setMotorMinPWM(uint8_t pwm);
 
+private:
+SliderDef _sliders[MAX_SLIDERS];
+uint8_t   _sliderCount = 0;
+
+void handleSlider(WiFiClient& client, const String& requestLine);
 private:
 
 enum LedState {
@@ -102,6 +121,9 @@ bool _ledEnabled = false;
 LedState _ledState = LED_BOOTING;
 unsigned long _ledTimer = 0;
 bool _ledLevel = false;
+
+
+
 
 private:
 
@@ -159,6 +181,18 @@ private:
     int8_t _lastDbgL = 127;
     int8_t _lastDbgR = 127;
     unsigned long _lastDbgPrintMs = 0;
+
+
+
+
+
+
+
+
 };
+
+
+
+
 
 #endif // THEFORGE2026_CONTROLLER_H

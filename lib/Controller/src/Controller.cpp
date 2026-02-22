@@ -323,6 +323,11 @@ void Controller::handleClient(WiFiClient& client) {
         return;
     }
 
+    if (requestLine.startsWith("GET /slider?")) {
+        handleSlider(client, requestLine);
+        return;
+    }
+
     sendHttpNotFound(client);
 }
 
@@ -488,6 +493,35 @@ void Controller::handleRoot(WiFiClient& client) {
         buttonsHtml = "<div style='opacity:.7'>No buttons registered</div>";
     }
 
+    // Sliders HTML
+    String slidersHtml;
+    for (uint8_t i = 0; i < _sliderCount; i++) {
+        String sid = String(i);
+        slidersHtml += "<div class='slRow'>";
+        slidersHtml += "<div class='slHeader'>";
+        slidersHtml += "<span class='slLabel'>";
+        slidersHtml += _sliders[i].label;
+        slidersHtml += "</span>";
+        slidersHtml += "<span class='slVal' id='sv";
+        slidersHtml += sid;
+        slidersHtml += "'>";
+        slidersHtml += _sliders[i].defaultVal;
+        slidersHtml += "</span></div>";
+        slidersHtml += "<input class='sl' type='range' id='sl";
+        slidersHtml += sid;
+        slidersHtml += "' min='";
+        slidersHtml += _sliders[i].minVal;
+        slidersHtml += "' max='";
+        slidersHtml += _sliders[i].maxVal;
+        slidersHtml += "' value='";
+        slidersHtml += _sliders[i].defaultVal;
+        slidersHtml += "' data-id='";
+        slidersHtml += sid;
+        slidersHtml += "'/></div>";
+    }
+
+
+
     String page;
     page.reserve(7500);
 
@@ -495,6 +529,13 @@ void Controller::handleRoot(WiFiClient& client) {
     page += "<meta name='viewport' content='width=device-width,initial-scale=1'/>";
     page += "<title>Robot Controller</title>";
     page += "<style>";
+    page += ".slRow{margin:14px 0;}";
+page += ".slHeader{display:flex;justify-content:space-between;margin-bottom:6px;}";
+page += ".slLabel{font-size:16px;font-weight:600;}";
+page += ".slVal{font-size:16px;font-variant-numeric:tabular-nums;}";
+page += ".sl{width:100%;height:42px;-webkit-appearance:none;appearance:none;background:transparent;touch-action:none;}";
+page += ".sl::-webkit-slider-runnable-track{height:12px;border-radius:999px;background:#ddd;border:1px solid #333;}";
+page += ".sl::-webkit-slider-thumb{-webkit-appearance:none;width:34px;height:34px;border-radius:50%;background:#333;border:2px solid #fff;margin-top:-12px;}";
   page += "#thrRow{margin-top:10px;}";
   page += ".thrHeader{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}";
   page += ".thrLabel{font-size:16px;font-weight:600;}";
@@ -532,6 +573,11 @@ void Controller::handleRoot(WiFiClient& client) {
     page += buttonsHtml;
     page += "</div>";
 
+    // Add to page (after buttons row)
+    page += "<div class='row' id='sliders'>";
+    page += slidersHtml;
+    page += "</div>";
+
     page += "<div class='row'><div id='joy'><div id='stick'></div></div></div>";
 
 page += "<div class='row' id='thrRow'>";
@@ -544,6 +590,18 @@ page += "</div>";
 
     // --- JS (STOP priority even if a request is in-flight) + HEARTBEAT resend ---
     page += "<script>";
+    page += "document.querySelectorAll('.sl').forEach(sl=>{";
+    page += "  let db;";
+    page += "  sl.addEventListener('input',()=>{";
+    page += "    const id=sl.getAttribute('data-id');";
+    page += "    const v=sl.value;";
+    page += "    document.getElementById('sv'+id).textContent=v;";
+    page += "    clearTimeout(db);";
+    page += "    db=setTimeout(()=>{";
+    page += "      fetch(`/slider?id=${id}&v=${v}&_=${Date.now()}`,{cache:'no-store'}).catch(()=>{});";
+    page += "    },80);";  // 80ms debounce — avoids flooding on fast drags
+    page += "  });";
+    page += "});";
     page += "let x=0,y=0,t=100;";
     page += "const joy=document.getElementById('joy');";
     page += "const stick=document.getElementById('stick');";
@@ -744,4 +802,33 @@ void Controller::motorApply(int8_t left, int8_t right) {
     debugMotors(left, right);
     setMotorOne(_ena, _in1, _in2, left);
     setMotorOne(_enb, _in3, _in4, right);
+}
+
+
+// ── registerSlider / clearSliders ─────────────────────────────────────────────
+bool Controller::registerSlider(const char* label, int minVal, int maxVal,
+                                 int defaultVal, void (*cb)(int)) {
+    if (_sliderCount >= MAX_SLIDERS) return false;
+    _sliders[_sliderCount] = { label, minVal, maxVal, defaultVal, cb };
+    _sliderCount++;
+    return true;
+}
+
+void Controller::clearSliders() { _sliderCount = 0; }
+
+// ── /slider?id=X&v=Y handler ──────────────────────────────────────────────────
+void Controller::handleSlider(WiFiClient& client, const String& requestLine) {
+    int id = -1, val = 0;
+    if (!extractQueryInt(requestLine, "id", id)) {
+        sendHttpOk(client, "text/plain; charset=utf-8", "Missing id"); return;
+    }
+    if (id < 0 || id >= (int)_sliderCount) {
+        sendHttpOk(client, "text/plain; charset=utf-8", "Bad id"); return;
+    }
+    extractQueryInt(requestLine, "v", val);
+    val = constrain(val, _sliders[id].minVal, _sliders[id].maxVal);
+
+    if (_sliders[id].cb) _sliders[id].cb(val);
+
+    sendHttpOk(client, "text/plain; charset=utf-8", "OK");
 }
