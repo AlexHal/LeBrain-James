@@ -80,17 +80,15 @@ void motorThreePullback(){
   int degree = currentDegree;
   int pwm = map(constrain((int)m3Speed, 0, 100), 0, 100, 0, 255); // change speed maybe?
   if (pwm > 0 && pwm < M3_MIN_PWM) pwm = M3_MIN_PWM;
+  digitalWrite(M3_IN1, LOW);
+  digitalWrite(M3_IN2, HIGH);
+  analogWrite(M3_EN, pwm);
 
   if (degree >= 90) {
-    digitalWrite(M3_IN1, LOW);
-    digitalWrite(M3_IN2, HIGH);
-    analogWrite(M3_EN, pwm);
     delay(1000); //we will need more time 
   } else {
-    digitalWrite(M3_IN1, LOW);
-    digitalWrite(M3_IN2, HIGH);
-    analogWrite(M3_EN, pwm);
-    int delayTime = (60 / (rpm * m3Speed / 100 ))*(currentDegree / 360); 
+    float actRPM = (float)rpm*(float)m3Speed / 100.0f;
+    float delayTime = ((float)degree / 360.0f) / (actRPM / 60.0f) * 1000.0f; 
     // delay based on time
     delay(delayTime);
 
@@ -113,31 +111,31 @@ void motorThreeRelease(){
 void presetOne(){
   currentDegree = 90;
   motorThreePullback();
-  motorThreePullback();
+  motorThreeRelease();
 }
 
 void presetTwo(){
   currentDegree = 45;
   motorThreePullback();
-  motorThreePullback();
+  motorThreeRelease();
 }
 
 void presetThree(){
   currentDegree = 30;
   motorThreePullback();
-  motorThreePullback();
+  motorThreeRelease();
 }
 
 void presetFour(){
   currentDegree = 20;
   motorThreePullback();
-  motorThreePullback();
+  motorThreeRelease();
 }
 
 void presetFive(){
   currentDegree = 10;
   motorThreePullback();
-  motorThreePullback();
+  motorThreeRelease();
 }
 
 void setup () {
@@ -151,7 +149,7 @@ void setup () {
 
   //Shooting presents
   controller.registerButton("Preset 1", presetOne);
-  controller.registerButton("Preset 4", presetTwo);
+  controller.registerButton("Preset 2", presetTwo);
   controller.registerButton("Preset 3", presetThree);
   controller.registerButton("Preset 4", presetFour);
   controller.registerButton("Preset 5", presetFive);
