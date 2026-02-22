@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include <Controller.h>
+#include <sound.h>
+
 
 Controller controller("LeBrain-James", "James000");
 
@@ -8,18 +10,27 @@ constexpr uint8_t M3_EN  = 3;
 constexpr uint8_t M3_IN1 = 2;
 constexpr uint8_t M3_IN2 = 8;
 constexpr uint8_t M3_MIN_PWM = 90;
+constexpr uint8_t DAC_PIN = A0; //TODO: set on board
 
-int8_t m3Speed  = 90; 
+int8_t m3Speed  = 100; 
 
 int currentDegree = 0;
-int rpm = 200;
+int rpm = 150; // Maybe uint8_t ?  //adjust with new bat pack
+
+
 
 void onDegree(int deg) {
     currentDegree = deg;
     Serial.print("[M3] Degree = "); Serial.println(deg);
 }
 
-
+void kobe() {
+    for (unsigned int i = 0; i < sound_len; i++) {
+        analogWrite(DAC_PIN, sound_data[i]);
+        delayMicroseconds(125); // 1/8000Hz = 125µs
+    }
+    analogWrite(DAC_PIN, 128); // return to midpoint silence
+}
 
 void MotorThreeInit(){
   pinMode(2, OUTPUT);
@@ -85,19 +96,16 @@ void motorThreePullback(){
   digitalWrite(M3_IN2, HIGH);
   analogWrite(M3_EN, pwm);
 
-  if (degree >= 90) {
-    delay(1000); //we will need more time 
-  } else {
+
     float actRPM = (float)rpm*(float)m3Speed / 100.0f;
     float delayTime = ((float)degree / 360.0f) / (actRPM / 60.0f) * 1000.0f; 
     // delay based on time
     delay(delayTime);
 
-    //brake till ready to shoot
     digitalWrite(M3_IN1, HIGH);
     digitalWrite(M3_IN2, HIGH);
     
-  }
+  //}
 
 }
 
@@ -106,6 +114,7 @@ void motorThreeRelease(){
   digitalWrite(M3_IN1, LOW);
   digitalWrite(M3_IN2, LOW);
   currentDegree = 0;
+  kobe();
 }
 
 
@@ -156,7 +165,7 @@ void setup () {
   controller.registerButton("Preset 5", presetFive);
 
 
-  controller.registerSlider("Pullback Degree", 0, 90, 45, onDegree);
+  controller.registerSlider("Pullback Degree", 0, 180, 90, onDegree);
   controller.registerButton("PullBack", motorThreePullback);
   controller.registerButton("Release",  motorThreeRelease);
 
