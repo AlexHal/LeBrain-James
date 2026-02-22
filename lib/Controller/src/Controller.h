@@ -158,7 +158,7 @@ private:
     bool _failsafeStopped = false;
 
     // Button registry
-    static constexpr uint8_t MAX_BUTTONS = 8;
+    static constexpr uint8_t MAX_BUTTONS = 24;
 
     struct ButtonReg {
         String label;
