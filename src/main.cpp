@@ -138,6 +138,56 @@ void presetFive(){
   motorThreeRelease();
 }
 
+// Roll forward configuration
+// Calibrated: 0.5m → 0.46m, 0.25m → 0.20m, adjusted factor upward
+constexpr int8_t ROLL_SPEED_LEFT = 45;   // Left motor speed (reduced to correct right curve)
+constexpr int8_t ROLL_SPEED_RIGHT = 50;  // Right motor speed
+constexpr float MS_PER_METER = 2475.0f;  // Calibrated timing (increased from 1880)
+
+void rollForward(float distanceMeters) {
+  Serial.print("[ROLL] Rolling forward ");
+  Serial.print(distanceMeters);
+  Serial.println("m...");
+  
+  // Calculate time based on calibrated speed
+  uint16_t rollTimeMs = (uint16_t)(distanceMeters * MS_PER_METER);
+  
+  // Directly control motors via L298N pins
+  // Left motor: ENA=9, IN1=7, IN2=6
+  // Right motor: ENB=10, IN3=5, IN4=4
+  
+  // Set direction: forward
+  digitalWrite(7, HIGH);  // IN1
+  digitalWrite(6, LOW);   // IN2
+  digitalWrite(5, HIGH);  // IN3
+  digitalWrite(4, LOW);   // IN4
+  
+  // Set speed (with compensation for curve)
+  int pwmLeft = map(ROLL_SPEED_LEFT, 0, 100, 0, 255);
+  int pwmRight = map(ROLL_SPEED_RIGHT, 0, 100, 0, 255);
+  analogWrite(9, pwmLeft);   // ENA - left motor
+  analogWrite(10, pwmRight); // ENB - right motor
+  
+  // Roll for calculated time
+  delay(rollTimeMs);
+  
+  // Stop both motors (brake)
+  digitalWrite(7, HIGH);
+  digitalWrite(6, HIGH);
+  digitalWrite(5, HIGH);
+  digitalWrite(4, HIGH);
+  analogWrite(9, 0);
+  analogWrite(10, 0);
+  
+  Serial.println("[ROLL] Done.");
+}
+
+// Wrapper functions for UI buttons
+void rollQuarterMeter() { rollForward(0.25f); }
+void rollHalfMeter()    { rollForward(0.50f); }
+void roll75cm()         { rollForward(0.75f); }
+void rollOneMeter()     { rollForward(1.00f); }
+
 void setup () {
   Serial.begin(9600) ;
   controller.configureL298N(9, 7, 6, 10, 5, 4) ;
@@ -153,6 +203,12 @@ void setup () {
   controller.registerButton("Preset 3", presetThree);
   controller.registerButton("Preset 4", presetFour);
   controller.registerButton("Preset 5", presetFive);
+  
+  // Movement
+  controller.registerButton("Roll 0.25m", rollQuarterMeter);
+  controller.registerButton("Roll 0.5m", rollHalfMeter);
+  controller.registerButton("Roll 0.75m", roll75cm);
+  controller.registerButton("Roll 1m", rollOneMeter);
 
 
   controller.registerSlider("Pullback Degree", 0, 90, 45, onDegree);
