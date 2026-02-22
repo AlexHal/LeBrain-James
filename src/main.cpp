@@ -10,8 +10,9 @@ constexpr uint8_t M3_IN2 = 8;
 constexpr uint8_t M3_MIN_PWM = 90;
 
 int8_t m3Speed  = 90; 
-int8_t currentDegree = 0;
-int8_t rpm = 200;
+
+int currentDegree = 0;
+int rpm = 200;
 
 void onDegree(int deg) {
     currentDegree = deg;
