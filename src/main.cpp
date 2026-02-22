@@ -11,41 +11,14 @@ constexpr uint8_t M3_MIN_PWM = 90;
 
 int8_t m3Speed  = 90; 
 int8_t currentDegree = 0;
+int8_t rpm = 200;
 
 void onDegree(int deg) {
     currentDegree = deg;
     Serial.print("[M3] Degree = "); Serial.println(deg);
 }
 
-void presetOne(){
-  currentDegree = 20;
-  motorThreePullback();
-  motorThreePullback();
-}
 
-void presetTwo(){
-  currentDegree = 20;
-  motorThreePullback();
-  motorThreePullback();
-}
-
-void presetThree(){
-  currentDegree = 20;
-  motorThreePullback();
-  motorThreePullback();
-}
-
-void presetFour(){
-  currentDegree = 20;
-  motorThreePullback();
-  motorThreePullback();
-}
-
-void presetFive(){
-  currentDegree = 20;
-  motorThreePullback();
-  motorThreePullback();
-}
 
 void MotorThreeInit(){
   pinMode(2, OUTPUT);
@@ -117,7 +90,9 @@ void motorThreePullback(){
     digitalWrite(M3_IN1, LOW);
     digitalWrite(M3_IN2, HIGH);
     analogWrite(M3_EN, pwm);
+    int delayTime = (60 / (rpm * m3Speed / 100 ))*(currentDegree / 360); 
     // delay based on time
+    delay(delayTime);
 
     //brake till ready to shoot
     digitalWrite(M3_IN1, HIGH);
@@ -134,6 +109,36 @@ void motorThreeRelease(){
   currentDegree = 0;
 }
 
+
+void presetOne(){
+  currentDegree = 90;
+  motorThreePullback();
+  motorThreePullback();
+}
+
+void presetTwo(){
+  currentDegree = 45;
+  motorThreePullback();
+  motorThreePullback();
+}
+
+void presetThree(){
+  currentDegree = 30;
+  motorThreePullback();
+  motorThreePullback();
+}
+
+void presetFour(){
+  currentDegree = 20;
+  motorThreePullback();
+  motorThreePullback();
+}
+
+void presetFive(){
+  currentDegree = 10;
+  motorThreePullback();
+  motorThreePullback();
+}
 
 void setup () {
   Serial.begin(9600) ;
